@@ -405,6 +405,48 @@ button {
   color: #fff;
 }
 
+.place-results {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.place-result {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--card);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+.place-result:hover {
+  background: #f6f2fd;
+}
+
+.place-name {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.place-address {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.place-attribution {
+  padding: 5px 12px;
+  font-size: 11px;
+  color: var(--muted);
+  background: #f8fafd;
+  text-align: right;
+}
+
 /* ---------- event list ---------- */
 .event-list {
   display: flex;

@@ -25,6 +25,10 @@ export default function TripHubPage() {
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [placeResults, setPlaceResults] = useState<
+    { name: string; address: string }[]
+  >([]);
+  const [placesPicked, setPlacesPicked] = useState(false);
 
   const refreshBookings = () =>
     fetchBookings(player)
@@ -44,6 +48,28 @@ export default function TripHubPage() {
   }, [player]);
 
   const trip = schedule?.trips.find((t) => t.id === tripId);
+  const tripPlace = trip?.place ?? "";
+
+  // Google Places hotel search near the trip's city, debounced while typing.
+  // Silently inactive when no API key is configured server-side.
+  useEffect(() => {
+    if (!formOpen || placesPicked || hotel.trim().length < 3) {
+      setPlaceResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({ q: hotel.trim(), near: tripPlace });
+      fetch(`/api/hotels?${params}`, { signal: controller.signal })
+        .then((r) => (r.ok ? r.json() : { hotels: [] }))
+        .then((d) => setPlaceResults(d.hotels ?? []))
+        .catch(() => {});
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [hotel, formOpen, placesPicked, tripPlace]);
 
   const tripBookings = useMemo(
     () => (bookings ?? []).filter((b) => b.trip_id === tripId),
@@ -82,6 +108,7 @@ export default function TripHubPage() {
     setHotel(myBooking?.hotel_name ?? "");
     setConfirmation(myBooking?.confirmation_number ?? "");
     setSaveError(null);
+    setPlacesPicked(Boolean(myBooking));
     setFormOpen(true);
   };
 
@@ -158,7 +185,10 @@ export default function TripHubPage() {
               <input
                 placeholder="Hotel name"
                 value={hotel}
-                onChange={(e) => setHotel(e.target.value)}
+                onChange={(e) => {
+                  setHotel(e.target.value);
+                  setPlacesPicked(false);
+                }}
                 autoFocus
               />
               <input
@@ -188,11 +218,33 @@ export default function TripHubPage() {
                   <button
                     key={s}
                     className="suggest-chip"
-                    onClick={() => setHotel(s)}
+                    onClick={() => {
+                      setHotel(s);
+                      setPlacesPicked(true);
+                    }}
                   >
                     {s}
                   </button>
                 ))}
+              </div>
+            )}
+            {placeResults.length > 0 && (
+              <div className="place-results">
+                {placeResults.map((r) => (
+                  <button
+                    key={r.name + r.address}
+                    className="place-result"
+                    onClick={() => {
+                      setHotel(r.name);
+                      setPlacesPicked(true);
+                      setPlaceResults([]);
+                    }}
+                  >
+                    <span className="place-name">{r.name}</span>
+                    <span className="place-address">{r.address}</span>
+                  </button>
+                ))}
+                <div className="place-attribution">Hotel search by Google</div>
               </div>
             )}
             {saveError && <div className="save-error">{saveError}</div>}
