@@ -12,7 +12,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <Link href="/" className="brand">
             <div>
               <div className="brand-title">{TEAM_NAME}</div>
-              <div className="brand-sub">Away Games &amp; Hotel Tracker</div>
+              <div className="brand-sub">Team Travel Tracker</div>
             </div>
           </Link>
           <PlayerBadge />
