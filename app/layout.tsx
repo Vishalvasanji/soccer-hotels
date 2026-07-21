@@ -4,7 +4,7 @@ import Shell from "./shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: `${TEAM_NAME} — Away Games & Hotels`,
+  title: `${TEAM_NAME} — Team Travel Tracker`,
   description:
     "Track away games, tournaments, and team hotel bookings for Louisiana Elite Soccer 14U.",
 };
