@@ -5,16 +5,31 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Booking, ScheduleData } from "@/lib/types";
 import { ROSTER } from "@/lib/roster";
-import { fetchBookings } from "@/lib/bookings";
+import { usePlayer } from "@/lib/player";
+import { fetchBookings, removeBooking, saveBooking } from "@/lib/bookings";
 import { formatRange, mapsUrl } from "@/lib/format";
+
+const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 export default function TripHubPage() {
   const params = useParams<{ id: string }>();
   const tripId = params.id;
+  const player = usePlayer();
 
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [hotel, setHotel] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const refreshBookings = () =>
+    fetchBookings(player)
+      .then(setBookings)
+      .catch(() => setError("Could not load hotel bookings."));
 
   useEffect(() => {
     fetch("/api/events")
@@ -24,10 +39,9 @@ export default function TripHubPage() {
       })
       .then(setSchedule)
       .catch((e) => setError(e.message));
-    fetchBookings()
-      .then(setBookings)
-      .catch(() => setError("Could not load hotel bookings."));
-  }, []);
+    refreshBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player]);
 
   const trip = schedule?.trips.find((t) => t.id === tripId);
 
@@ -47,10 +61,66 @@ export default function TripHubPage() {
       </div>
     );
 
+  const myBooking = tripBookings.find((b) => b.player_name === player);
   const hotels = [...new Set(tripBookings.map((b) => b.hotel_name))];
   const unbooked = ROSTER.filter(
     (p) => !tripBookings.some((b) => b.player_name === p.name)
   );
+
+  // Fuzzy match the typed name against hotels other families already booked
+  // so spellings converge and the by-hotel grouping stays clean.
+  const suggestions =
+    hotel.trim().length >= 2
+      ? hotels.filter((h) => {
+          const a = normalize(h);
+          const b = normalize(hotel);
+          return a !== b && (a.includes(b) || b.includes(a));
+        })
+      : [];
+
+  const openForm = () => {
+    setHotel(myBooking?.hotel_name ?? "");
+    setConfirmation(myBooking?.confirmation_number ?? "");
+    setSaveError(null);
+    setFormOpen(true);
+  };
+
+  const save = async () => {
+    if (!hotel.trim()) return;
+    setBusy(true);
+    setSaveError(null);
+    // Snap to an existing hotel's spelling when the names are equivalent.
+    const typed = hotel.trim();
+    const existing = hotels.find((h) => normalize(h) === normalize(typed));
+    try {
+      await saveBooking({
+        trip_id: trip.id,
+        player_name: player,
+        hotel_name: existing ?? typed,
+        confirmation_number: confirmation.trim(),
+      });
+      await refreshBookings();
+      setFormOpen(false);
+    } catch {
+      setSaveError("Save failed — please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    setSaveError(null);
+    try {
+      await removeBooking(trip.id, player);
+      await refreshBookings();
+      setFormOpen(false);
+    } catch {
+      setSaveError("Could not remove the booking — please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <>
@@ -63,7 +133,7 @@ export default function TripHubPage() {
       <div className="card" style={{ padding: "16px 18px", marginBottom: 22 }}>
         <div className="event-title" style={{ fontSize: 19 }}>
           {trip.name}
-          <span className="badge badge-away">{trip.place}</span>
+          <span className="badge badge-place">{trip.place}</span>
         </div>
         <div className="trip-card-dates" style={{ margin: "4px 0 6px" }}>
           {formatRange(trip.startDate, trip.endDate)}
@@ -78,6 +148,84 @@ export default function TripHubPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="section-title">Your booking</div>
+      <div className="card" style={{ padding: "16px 18px", marginBottom: 22 }}>
+        {formOpen ? (
+          <>
+            <div className="edit-form">
+              <input
+                placeholder="Hotel name"
+                value={hotel}
+                onChange={(e) => setHotel(e.target.value)}
+                autoFocus
+              />
+              <input
+                placeholder="Confirmation # (optional)"
+                value={confirmation}
+                onChange={(e) => setConfirmation(e.target.value)}
+              />
+              <button
+                className="btn btn-primary"
+                disabled={busy || !hotel.trim()}
+                onClick={save}
+              >
+                {busy ? "Saving…" : "Save"}
+              </button>
+              <button
+                className="btn"
+                disabled={busy}
+                onClick={() => setFormOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+            {suggestions.length > 0 && (
+              <div className="suggest-row">
+                Same hotel?{" "}
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    className="suggest-chip"
+                    onClick={() => setHotel(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+            {saveError && <div className="save-error">{saveError}</div>}
+          </>
+        ) : myBooking ? (
+          <div className="my-booking">
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15.5 }}>
+                🏨 {myBooking.hotel_name}
+              </div>
+              <div className="event-location" style={{ marginTop: 3 }}>
+                {myBooking.confirmation_number
+                  ? `Confirmation #: ${myBooking.confirmation_number}`
+                  : "No confirmation number saved"}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn" onClick={openForm}>
+                Edit
+              </button>
+              <button className="btn-ghost" disabled={busy} onClick={remove}>
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="my-booking">
+            <span className="no-hotel">No hotel booked</span>
+            <button className="btn btn-primary add-btn" onClick={openForm}>
+              ＋ Add hotel
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="section-title">
@@ -107,7 +255,6 @@ export default function TripHubPage() {
                   <span key={b.id} className="player-chip">
                     <span className="num">#{p?.number ?? "–"}</span>
                     {b.player_name}
-                    {b.notes && <span className="chip-note">· {b.notes}</span>}
                   </span>
                 );
               })}

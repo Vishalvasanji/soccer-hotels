@@ -38,7 +38,8 @@ export interface Booking {
   trip_id: string;
   player_name: string;
   hotel_name: string;
-  notes: string;
+  // Present only on the requesting family's own bookings.
+  confirmation_number?: string;
   created_at: string;
   updated_at: string;
 }

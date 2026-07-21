@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { ScheduleData, Trip } from "@/lib/types";
+import type { Booking, ScheduleData, Trip } from "@/lib/types";
+import { usePlayer } from "@/lib/player";
+import { fetchBookings } from "@/lib/bookings";
 import { formatDate, formatRange, formatTime, todayYmd } from "@/lib/format";
 
 export default function AwayGamesPage() {
+  const player = usePlayer();
   const [data, setData] = useState<ScheduleData | null>(null);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -17,7 +21,10 @@ export default function AwayGamesPage() {
       })
       .then(setData)
       .catch((e) => setError(e.message));
-  }, []);
+    fetchBookings(player)
+      .then(setBookings)
+      .catch(() => {});
+  }, [player]);
 
   if (error) return <div className="error-box card">{error}</div>;
   if (!data) return <div className="loading">Loading away games…</div>;
@@ -26,12 +33,15 @@ export default function AwayGamesPage() {
   const upcoming = data.trips.filter((t) => t.endDate >= today);
   const past = data.trips.filter((t) => t.endDate < today);
 
+  const isBooked = (trip: Trip) =>
+    bookings.some((b) => b.trip_id === trip.id && b.player_name === player);
+
   return (
     <>
       <h1>Away Games &amp; Tournaments</h1>
       <p className="page-sub">
         Live from the PlayMetrics schedule, synced hourly. Tap a game to see
-        team hotels and add yours.
+        team hotels and book yours.
       </p>
 
       {upcoming.length === 0 && (
@@ -40,7 +50,7 @@ export default function AwayGamesPage() {
 
       <div className="trip-list">
         {upcoming.map((t) => (
-          <TripCard key={t.id} trip={t} />
+          <TripCard key={t.id} trip={t} booked={isBooked(t)} />
         ))}
       </div>
 
@@ -49,7 +59,7 @@ export default function AwayGamesPage() {
           <div className="section-title">Past trips</div>
           <div className="trip-list">
             {past.map((t) => (
-              <TripCard key={t.id} trip={t} past />
+              <TripCard key={t.id} trip={t} booked={isBooked(t)} past />
             ))}
           </div>
         </>
@@ -58,7 +68,15 @@ export default function AwayGamesPage() {
   );
 }
 
-function TripCard({ trip, past = false }: { trip: Trip; past?: boolean }) {
+function TripCard({
+  trip,
+  booked,
+  past = false,
+}: {
+  trip: Trip;
+  booked: boolean;
+  past?: boolean;
+}) {
   return (
     <Link
       href={`/trip/${trip.id}`}
@@ -68,7 +86,12 @@ function TripCard({ trip, past = false }: { trip: Trip; past?: boolean }) {
       <div className="trip-row-main">
         <div className="event-title" style={{ fontSize: 16 }}>
           {trip.name}
-          <span className="badge badge-away">{trip.place}</span>
+          <span className="badge badge-place">{trip.place}</span>
+          {booked ? (
+            <span className="badge badge-booked">✓ Booked</span>
+          ) : (
+            !past && <span className="badge badge-need">Needs hotel</span>
+          )}
         </div>
         <div className="trip-card-dates" style={{ margin: "4px 0 6px" }}>
           {formatRange(trip.startDate, trip.endDate)}

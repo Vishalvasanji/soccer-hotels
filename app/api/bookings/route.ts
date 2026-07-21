@@ -3,13 +3,20 @@ import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const player = req.nextUrl.searchParams.get("player");
   try {
     const c = await db();
     const result = await c.execute(
-      "SELECT * FROM hotel_bookings ORDER BY created_at ASC"
+      "SELECT id, trip_id, player_name, hotel_name, confirmation_number, created_at, updated_at FROM hotel_bookings ORDER BY created_at ASC"
     );
-    return NextResponse.json(result.rows);
+    // Confirmation numbers are family-private: only returned for the
+    // requesting device's own player.
+    const rows = result.rows.map((r) => {
+      const { confirmation_number, ...rest } = r as Record<string, unknown>;
+      return r.player_name === player ? { ...rest, confirmation_number } : rest;
+    });
+    return NextResponse.json(rows);
   } catch {
     return NextResponse.json({ error: "Database error" }, { status: 502 });
   }
@@ -26,21 +33,21 @@ export async function POST(req: NextRequest) {
   const trip_id = cleanField(body?.trip_id, 100);
   const player_name = cleanField(body?.player_name, 100);
   const hotel_name = cleanField(body?.hotel_name, 200);
-  const notes = cleanField(body?.notes ?? "", 300);
-  if (!trip_id || !player_name || !hotel_name || notes === null) {
+  const confirmation_number = cleanField(body?.confirmation_number ?? "", 100);
+  if (!trip_id || !player_name || !hotel_name || confirmation_number === null) {
     return NextResponse.json({ error: "Invalid booking" }, { status: 400 });
   }
 
   try {
     const c = await db();
     await c.execute({
-      sql: `INSERT INTO hotel_bookings (trip_id, player_name, hotel_name, notes)
+      sql: `INSERT INTO hotel_bookings (trip_id, player_name, hotel_name, confirmation_number)
             VALUES (?, ?, ?, ?)
             ON CONFLICT (trip_id, player_name) DO UPDATE SET
               hotel_name = excluded.hotel_name,
-              notes = excluded.notes,
+              confirmation_number = excluded.confirmation_number,
               updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')`,
-      args: [trip_id, player_name, hotel_name, notes],
+      args: [trip_id, player_name, hotel_name, confirmation_number],
     });
     return NextResponse.json({ ok: true });
   } catch {
