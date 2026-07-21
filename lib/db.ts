@@ -27,18 +27,28 @@ function getClient(): Client {
 export async function db(): Promise<Client> {
   const c = getClient();
   if (!schemaReady) {
-    schemaReady = c.execute(`
-      CREATE TABLE IF NOT EXISTS hotel_bookings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        trip_id TEXT NOT NULL,
-        player_name TEXT NOT NULL,
-        hotel_name TEXT NOT NULL,
-        notes TEXT NOT NULL DEFAULT '',
-        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-        UNIQUE (trip_id, player_name)
-      )
-    `);
+    schemaReady = (async () => {
+      await c.execute(`
+        CREATE TABLE IF NOT EXISTS hotel_bookings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          trip_id TEXT NOT NULL,
+          player_name TEXT NOT NULL,
+          hotel_name TEXT NOT NULL,
+          notes TEXT NOT NULL DEFAULT '',
+          confirmation_number TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          UNIQUE (trip_id, player_name)
+        )
+      `);
+      try {
+        await c.execute(
+          "ALTER TABLE hotel_bookings ADD COLUMN confirmation_number TEXT NOT NULL DEFAULT ''"
+        );
+      } catch {
+        // Column already exists on databases created before this migration.
+      }
+    })();
   }
   await schemaReady;
   return c;

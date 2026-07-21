@@ -218,6 +218,16 @@ h1 {
   color: var(--green);
 }
 
+.badge-need {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badge-place {
+  background: #eef1f7;
+  color: var(--muted);
+}
+
 .section-title {
   font-size: 17px;
   font-weight: 700;
@@ -303,6 +313,106 @@ button {
 .back-link {
   font-weight: 600;
   text-decoration: none;
+}
+
+/* ---------- player picker ---------- */
+.picker {
+  padding: 26px 24px;
+  max-width: 640px;
+  margin: 24px auto;
+}
+
+.picker-title {
+  margin: 0 0 6px;
+  font-size: 21px;
+}
+
+.picker-sub {
+  color: var(--muted);
+  margin: 0 0 18px;
+  font-size: 14.5px;
+}
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.picker-player {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker-player:hover {
+  border-color: var(--brand);
+  background: #f6f2fd;
+}
+
+.picker-player .num {
+  color: var(--accent);
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+.picker-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.header-player {
+  background: var(--brand-2);
+  color: #fff;
+}
+
+.header-player .num {
+  color: #ffb38a;
+}
+
+/* ---------- your booking ---------- */
+.my-booking {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.add-btn {
+  font-size: 15px;
+}
+
+.suggest-row {
+  margin-top: 10px;
+  font-size: 13.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.suggest-chip {
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.suggest-chip:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 /* ---------- event list ---------- */

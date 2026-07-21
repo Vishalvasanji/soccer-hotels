@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import Link from "next/link";
 import { TEAM_NAME } from "@/lib/roster";
+import Shell from "./shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,24 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <header className="site-header">
-          <div className="container header-inner">
-            <Link href="/" className="brand">
-              <span className="brand-badge">⚽</span>
-              <div>
-                <div className="brand-title">{TEAM_NAME}</div>
-                <div className="brand-sub">Away Games &amp; Hotel Tracker</div>
-              </div>
-            </Link>
-          </div>
-        </header>
-        <main className="container">{children}</main>
-        <footer className="site-footer">
-          <div className="container">
-            Schedule syncs hourly from PlayMetrics · Coming soon: live hotel
-            pricing near each field
-          </div>
-        </footer>
+        <Shell>{children}</Shell>
       </body>
     </html>
   );
